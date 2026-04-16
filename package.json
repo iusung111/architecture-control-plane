@@ -1,16 +1,21 @@
 {
-  "name": "p1work",
-  "version": "1.0.0",
-  "description": "This scaffold is the executable companion to the latest control-plane architecture documents. It includes a production-oriented execution path: API, database migrations, job workers, outbox delivery, authentication modes, and an observability stack with Prometheus, Grafana, Tempo, and an OpenTelemetry Collector.",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs",
-    "test": "tests"
-  },
+  "name": "architecture-control-plane",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "check": "npm run lint && npm run test",
+    "lint": "tsc --noEmit",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "smoke": "node scripts/live-smoke.mjs",
+    "smoke:local": "node scripts/live-smoke.mjs http://127.0.0.1:8787",
+    "test": "vitest run"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.10.8",
+    "@types/node": "^24.7.2",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.83.0"
+  }
 }

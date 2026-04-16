@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "architecture-control-plane",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-12-10",
+  "durable_objects": {
+    "bindings": [{ "name": "CONTROL_PLANE", "class_name": "ControlPlaneState" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ControlPlaneState"] }]
+}

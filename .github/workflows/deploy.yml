@@ -1,0 +1,35 @@
+name: Deploy Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      SMOKE_BASE_URL: ${{ secrets.WORKER_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm install
+
+      - name: Check
+        run: npm run check
+
+      - name: Deploy
+        run: npm run deploy
+
+      - name: Live smoke
+        if: ${{ env.SMOKE_BASE_URL != '' }}
+        run: npm run smoke
