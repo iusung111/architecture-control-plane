@@ -9,6 +9,9 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from app.core.config_support.constants import SECRET_FILE_ENV_FIELD_MAP
+from app.core.config_support.model import Settings
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -17,6 +20,19 @@ def _env_flag(name: str, default: bool = False) -> bool:
     if raw is None:
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _subprocess_env() -> dict[str, str]:
+    env = os.environ.copy()
+    runtime_keys = {field_name.upper() for field_name in Settings.model_fields}
+    runtime_keys.update(f"{key}_FILE" for key in SECRET_FILE_ENV_FIELD_MAP)
+    runtime_keys.add("SECRETS_DIR")
+    for key in runtime_keys:
+        env.pop(key, None)
+    for key in list(env):
+        if key.startswith("ACP_RELEASE_"):
+            env.pop(key, None)
+    return env
 
 
 @dataclass
@@ -47,6 +63,7 @@ def _run(name: str, command: list[str]) -> CommandResult:
     completed = subprocess.run(  # noqa: S603
         command,
         cwd=ROOT,
+        env=_subprocess_env(),
         capture_output=True,
         text=True,
         check=False,

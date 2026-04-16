@@ -34,6 +34,8 @@ def test_release_readiness_supports_non_production_runtime_bypass() -> None:
     env = os.environ.copy()
     env["ACP_RELEASE_SKIP_RUNTIME_VALIDATION"] = "true"
     env["ACP_RELEASE_PYTEST_TARGETS"] = "tests/test_health.py"
+    env["MANAGEMENT_ENDPOINTS_REQUIRE_API_KEY"] = "true"
+    env["MANAGEMENT_API_KEY"] = "ops-secret"
     completed = subprocess.run(  # noqa: S603
         [sys.executable, "scripts/release_readiness.py"],
         cwd=Path(__file__).resolve().parents[1],

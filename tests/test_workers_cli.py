@@ -16,7 +16,7 @@ class _FakeSession:
         self.closed = True
 
 
-@dataclass
+@dataclass(slots=True)
 class _RunnerResult:
     processed: int = 1
     succeeded: int = 1
@@ -24,7 +24,7 @@ class _RunnerResult:
     dead_lettered: int = 0
 
 
-@dataclass
+@dataclass(slots=True)
 class _OutboxResult:
     processed: int = 1
     delivered_ids: list[str] | None = None

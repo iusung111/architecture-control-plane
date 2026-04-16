@@ -101,6 +101,23 @@ def _assert(cond: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+def _assert_review_preview(preview_data: dict[str, object], providers: list[dict]) -> None:
+    review = preview_data.get("review")
+    if review is None:
+        review_capable = [
+            item
+            for item in providers
+            if item.get("configured") and item.get("enabled") and item.get("allow_review")
+        ]
+        _assert(
+            not review_capable,
+            "staging routing preview omitted review decision despite configured review-capable provider",
+        )
+        return
+    _assert(isinstance(review, dict), "staging routing preview returned an invalid review payload")
+    _assert(review.get("session_mode") == "fresh_review_session", "review session policy violated")
+
+
 
 def _poll_backup_drill_job(cfg: StagingSmokeConfig, *, admin_headers: dict[str, str], status_url: str) -> dict[str, object]:
     deadline = time.time() + cfg.drill_timeout_seconds
@@ -248,7 +265,7 @@ def main() -> int:
         timeout=cfg.timeout_seconds,
     )
     _assert(status == 200, "staging admin LLM routing preview failed")
-    _assert(preview["data"]["review"]["session_mode"] == "fresh_review_session", "review session policy violated")
+    _assert_review_preview(preview["data"], providers["data"]["providers"])
 
     status, audit = _request_json(f"{cfg.base_url}/v1/admin/audit/events", headers=operator_headers, timeout=cfg.timeout_seconds)
     _assert(status == 200 and "events" in audit["data"], "staging admin audit fetch failed for operator key")

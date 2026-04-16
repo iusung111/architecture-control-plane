@@ -75,7 +75,7 @@
 - Run migrations as a separate step or one-shot job before deploying API replicas.
 - Confirm worker `/readyz` endpoints return HTTP 200 before routing traffic or considering the stack healthy.
 - Review database pool and timeout settings against expected concurrency before rollout.
-- Run `python scripts/release_readiness.py` with production-equivalent environment variables before promotion; use `ACP_RELEASE_RUN_POSTGRES_INTEGRATION=1` and `ACP_RELEASE_RUN_COMPOSE_SMOKE=1` when those gates are required for the release.
+- Run `python scripts/release_readiness.py` with production-equivalent environment variables before promotion; runtime validation reads the active shell env, while repo quality gates run with repo runtime vars scrubbed to avoid secret-bearing deploy envs changing unit-test defaults. Use `ACP_RELEASE_RUN_POSTGRES_INTEGRATION=1` and `ACP_RELEASE_RUN_COMPOSE_SMOKE=1` when those gates are required for the release.
 
 
 ## Webhook security

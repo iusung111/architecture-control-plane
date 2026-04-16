@@ -1,5 +1,9 @@
 from pathlib import Path
 
+import pytest
+
+from scripts import staging_live_smoke
+
 
 def test_staging_live_smoke_script_supports_quota_refresh_and_backup_drill() -> None:
     script = Path("scripts/staging_live_smoke.py").read_text()
@@ -40,3 +44,18 @@ def test_staging_live_smoke_mentions_admin_ops_paths():
     assert "DELETE /v1/admin/ops/backups/drill/jobs/{job_id}" in script
     assert "STAGING_DRILL_TARGET_NAME" in script
     assert "/v1/admin/ops/observability/status" in script
+
+
+def test_staging_live_smoke_allows_null_review_preview_without_review_provider() -> None:
+    staging_live_smoke._assert_review_preview(
+        {"review": None},
+        [{"provider": "gemini", "configured": False, "enabled": False, "allow_review": False}],
+    )
+
+
+def test_staging_live_smoke_rejects_null_review_preview_with_review_provider() -> None:
+    with pytest.raises(RuntimeError, match="omitted review decision"):
+        staging_live_smoke._assert_review_preview(
+            {"review": None},
+            [{"provider": "gemini", "configured": True, "enabled": True, "allow_review": True}],
+        )

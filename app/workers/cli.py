@@ -63,7 +63,7 @@ def _run_jobs(limit: int, worker_id: str) -> dict[str, object]:
             worker_id=worker_id,
             limit=limit,
         )
-        return result.__dict__
+        return asdict(result)
     finally:
         session.close()
 
@@ -73,7 +73,7 @@ def _run_outbox(limit: int) -> dict[str, object]:
     session = get_session_factory()()
     try:
         result = OutboxConsumer(session, handlers=build_default_outbox_handlers()).deliver_once(limit=limit)
-        return result.__dict__
+        return asdict(result)
     finally:
         session.close()
 

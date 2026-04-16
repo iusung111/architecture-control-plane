@@ -4,6 +4,7 @@ A release is considered production-ready only when all items below are green for
 
 ## Quality gates
 - `python scripts/release_readiness.py --allow-non-production-runtime` for repository-level gates
+  - The script validates runtime settings against the current shell env, but runs `ruff`/`pytest`/smoke subprocesses with repo runtime vars scrubbed so ambient deploy secrets do not distort unit-test defaults.
 - `python scripts/release_readiness.py` in a production-like env before promotion
 - `ruff check .`
 - `pytest -q`
