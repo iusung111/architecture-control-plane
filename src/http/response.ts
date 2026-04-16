@@ -3,6 +3,8 @@ export class HttpError extends Error {
     public readonly status: number,
     public readonly code: string,
     message: string,
+    public readonly headers: HeadersInit = {},
+    public readonly details: Record<string, unknown> = {},
   ) {
     super(message);
   }
@@ -25,10 +27,11 @@ export function errorResponse(error: HttpError, requestId: string | null): Respo
     {
       error: {
         code: error.code,
+        details: error.details,
         message: error.message,
       },
       request_id: requestId,
     },
-    { status: error.status },
+    { status: error.status, headers: error.headers },
   );
 }

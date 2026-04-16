@@ -27,6 +27,7 @@ npm run smoke -- https://architecture-control-plane.<subdomain>.workers.dev
 
 ## What the live smoke covers
 
+- public landing page
 - health and readiness
 - create cycle
 - idempotent replay

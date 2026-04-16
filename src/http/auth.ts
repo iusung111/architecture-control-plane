@@ -4,7 +4,17 @@ import { HttpError } from "./response";
 export function actorFromRequest(request: Request): ActorContext {
   const userId = request.headers.get("X-User-Id");
   if (!userId) {
-    throw new HttpError(401, "missing_user", "X-User-Id is required.");
+    throw new HttpError(
+      401,
+      "missing_user",
+      "Authentication required. Supply X-User-Id before calling protected API routes.",
+      { Link: '</docs>; rel="help"' },
+      {
+        docs_url: "/docs",
+        protected_prefix: "/v1",
+        required_header: "X-User-Id",
+      },
+    );
   }
   return {
     userId,

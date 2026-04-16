@@ -25,6 +25,10 @@ npm run smoke -- https://architecture-control-plane.<subdomain>.workers.dev
 The smoke script is not optional. Deployment is only considered complete after
 that script passes against the live Worker.
 
+Good first-load UX is part of the deploy gate. The base URL must render the
+landing page, and protected API routes must return a guided 401 with a help link
+to `/docs` instead of an uncontextualized auth failure.
+
 ## Verified deployment
 
 Verified on 2026-04-16:

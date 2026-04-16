@@ -10,6 +10,12 @@ current codebase targets one deployment model only:
 - deterministic contract tests in the Workers runtime
 - one live smoke script reused before and after deploy
 
+Public entry routes now follow a user-first flow:
+
+- `GET /` returns an HTML landing page instead of an auth error
+- `GET /docs` explains the authenticated workflow with a copy-ready `curl`
+- only `GET /healthz`, `GET /readyz`, and `/v1/*` keep their runtime-specific roles
+
 ## Why it was rebuilt
 
 The goal is to keep deployment honest and maintainable. A Worker-first runtime
@@ -43,6 +49,8 @@ Live deployment verified on 2026-04-16:
 
 ## API surface
 
+- `GET /`
+- `GET /docs`
 - `GET /healthz`
 - `GET /readyz`
 - `POST /v1/cycles`

@@ -13,6 +13,7 @@ smallest durable runtime that Cloudflare executes directly.
 - one global Durable Object stores all control-plane state
 - Worker health checks stay outside the Durable Object
 - API routes proxy to the Durable Object for every stateful operation
+- public landing and docs routes stay outside auth to avoid first-load dead ends
 
 The single Durable Object is deliberate. It keeps state changes serialized,
 removes external database setup, and makes local integration tests match the
@@ -40,6 +41,9 @@ approval gate or a verification failure so the same API can drive:
 - deployed smoke tests
 
 That choice is documented because it is architectural, not accidental.
+
+The root URL is also intentionally human-facing. First contact should explain
+the workflow and auth model instead of returning a raw API error.
 
 ## Maintainability rules
 

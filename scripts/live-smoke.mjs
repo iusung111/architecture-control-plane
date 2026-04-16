@@ -32,6 +32,10 @@ function assert(condition, message) {
 }
 
 console.log(`smoke target: ${baseUrl}`);
+const landing = await fetch(`${baseUrl}/`);
+assert(landing.ok, "landing route failed");
+assert(landing.headers.get("content-type")?.includes("text/html"), "landing is not HTML");
+assert((await landing.text()).includes("Worker-first control-plane API"), "landing content missing");
 assert((await call("GET", "/healthz")).ok === true, "healthz failed");
 assert((await call("GET", "/readyz")).ok === true, "readyz failed");
 
