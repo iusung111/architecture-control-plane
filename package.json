@@ -1,0 +1,16 @@
+{
+  "name": "p1work",
+  "version": "1.0.0",
+  "description": "This scaffold is the executable companion to the latest control-plane architecture documents. It includes a production-oriented execution path: API, database migrations, job workers, outbox delivery, authentication modes, and an observability stack with Prometheus, Grafana, Tempo, and an OpenTelemetry Collector.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

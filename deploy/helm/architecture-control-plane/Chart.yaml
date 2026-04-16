@@ -1,0 +1,6 @@
+apiVersion: v2
+name: architecture-control-plane
+description: Helm chart for the Architecture Control Plane
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

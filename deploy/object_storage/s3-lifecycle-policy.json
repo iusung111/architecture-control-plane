@@ -1,0 +1,20 @@
+{
+  "Rules": [
+    {
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 7
+      },
+      "Expiration": {
+        "Days": 30
+      },
+      "Filter": {
+        "Prefix": ""
+      },
+      "ID": "acp-backup-expiration",
+      "NoncurrentVersionExpiration": {
+        "NoncurrentDays": 30
+      },
+      "Status": "Enabled"
+    }
+  ]
+}

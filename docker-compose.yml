@@ -1,0 +1,248 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command:
+    - redis-server
+    - --save
+    - ""
+    - --appendonly
+    - no
+    ports:
+    - 6379:6379
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: control_plane
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+    - 5432:5432
+    volumes:
+    - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U postgres -d control_plane
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  tempo:
+    image: grafana/tempo:2.6.1
+    command:
+    - -config.file=/etc/tempo.yaml
+    volumes:
+    - ./deploy/tempo.yaml:/etc/tempo.yaml:ro
+    - tempo_data:/var/tempo
+    ports:
+    - 3200:3200
+    - 4319:4318
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    command:
+    - --config=/etc/otelcol-contrib/config.yaml
+    volumes:
+    - ./deploy/otel/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+    - 4318:4318
+    - 8888:8888
+    depends_on:
+    - tempo
+  webhook-sink:
+    build: .
+    environment:
+      WEBHOOK_SINK_HMAC_SECRET: local-dev-webhook-signing-secret
+      WEBHOOK_SINK_TIMESTAMP_TOLERANCE_SECONDS: '300'
+    command: python scripts/webhook_sink.py --host 0.0.0.0 --port 8081
+    ports:
+    - 8081:8081
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/healthz')"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  mailpit:
+    image: axllent/mailpit:v1.20.3
+    ports:
+    - 8025:8025
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8025/api/v1/messages')"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    command:
+    - --config.file=/etc/alertmanager/alertmanager.yml
+    volumes:
+    - ./deploy/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+    - 9093:9093
+    depends_on:
+      webhook-sink:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+  migrate:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/control_plane
+      AUTH_MODE: header
+      MANAGEMENT_ENDPOINTS_REQUIRE_API_KEY: 'true'
+      MANAGEMENT_API_KEY: local-dev-management-key
+      ABUSE_RATE_LIMIT_BACKEND: redis
+      ABUSE_RATE_LIMIT_ALGORITHM: token_bucket
+      ABUSE_RATE_LIMIT_BURST_MULTIPLIER: 1.5
+      ABUSE_RATE_LIMIT_BACKEND_FAILURE_MODE: open
+      ABUSE_RATE_LIMIT_BACKEND_FAILURE_MODE_API: open
+      ABUSE_RATE_LIMIT_BACKEND_FAILURE_MODE_MANAGEMENT: closed
+      ABUSE_RATE_LIMIT_BACKEND_FAILURE_RETRY_AFTER_SECONDS: 5
+      ABUSE_REDIS_URL: redis://redis:6379/0
+    command: alembic upgrade head
+    depends_on:
+      postgres:
+        condition: service_healthy
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/control_plane
+      AUTH_MODE: header
+      LOG_LEVEL: INFO
+      ABUSE_RATE_LIMIT_BACKEND: redis
+      ABUSE_RATE_LIMIT_ALGORITHM: token_bucket
+      ABUSE_RATE_LIMIT_BURST_MULTIPLIER: 1.5
+      ABUSE_RATE_LIMIT_BACKEND_FAILURE_MODE: open
+      ABUSE_RATE_LIMIT_BACKEND_FAILURE_MODE_API: open
+      ABUSE_RATE_LIMIT_BACKEND_FAILURE_MODE_MANAGEMENT: closed
+      ABUSE_RATE_LIMIT_BACKEND_FAILURE_RETRY_AFTER_SECONDS: 5
+      ABUSE_REDIS_URL: redis://redis:6379/0
+      OTEL_ENABLED: 'true'
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_SERVICE_NAME: architecture-control-plane-api
+      MANAGEMENT_ENDPOINTS_REQUIRE_API_KEY: 'true'
+      MANAGEMENT_API_KEY: local-dev-management-key
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+    - 8000:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - python -c "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8000/readyz',
+        headers={'X-Management-Key':'local-dev-management-key'}))"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  worker-jobs:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/control_plane
+      AUTH_MODE: header
+      LOG_LEVEL: INFO
+      OTEL_ENABLED: 'true'
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_SERVICE_NAME: architecture-control-plane-worker-jobs
+      WORKER_METRICS_ENABLED: 'true'
+    command: python -m app.workers.cli jobs --worker-id worker-jobs --limit 20 --loop
+      --sleep-seconds 2 --metrics-port 9101
+    ports:
+    - 9101:9101
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9101/readyz')"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  worker-outbox:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/control_plane
+      AUTH_MODE: header
+      LOG_LEVEL: INFO
+      NOTIFICATION_WEBHOOK_URL: http://webhook-sink:8081/webhook
+      NOTIFICATION_WEBHOOK_SIGNING_SECRET: local-dev-webhook-signing-secret
+      OTEL_ENABLED: 'true'
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_SERVICE_NAME: architecture-control-plane-worker-outbox
+      WORKER_METRICS_ENABLED: 'true'
+    command: python -m app.workers.cli outbox --limit 50 --loop --sleep-seconds 2
+      --metrics-port 9102
+    ports:
+    - 9102:9102
+    depends_on:
+      postgres:
+        condition: service_healthy
+      webhook-sink:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9102/readyz')"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command:
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --storage.tsdb.path=/prometheus
+    volumes:
+    - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    - ./deploy/prometheus/alerts:/etc/prometheus/alerts:ro
+    - prometheus_data:/prometheus
+    ports:
+    - 9090:9090
+    depends_on:
+    - alertmanager
+    - api
+    - worker-jobs
+    - worker-outbox
+    - otel-collector
+  grafana:
+    image: grafana/grafana:11.2.2
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    volumes:
+    - ./deploy/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+    - ./deploy/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    - ./deploy/grafana/dashboards:/etc/grafana/provisioning/dashboards/json:ro
+    - grafana_data:/var/lib/grafana
+    ports:
+    - 3000:3000
+    depends_on:
+    - prometheus
+    - tempo
+volumes:
+  grafana_data: null
+  postgres_data: null
+  prometheus_data: null
+  tempo_data: null

@@ -1,0 +1,667 @@
+openapi: 3.1.0
+info:
+  title: Architecture Control Plane API
+  version: 0.1.0
+  description: |
+    API contract for cycle orchestration, approval, and result retrieval.
+
+    Current scaffold authentication is header-based:
+    - `X-User-Id` is required on authenticated endpoints.
+    - `X-User-Role` is optional and defaults to `operator`.
+    - `X-Tenant-Id` is optional.
+    - `X-Request-Id` is optional and is echoed in the response envelope body as `request_id`.
+servers:
+  - url: /v1
+security:
+  - UserIdentityHeader: []
+tags:
+  - name: cycles
+  - name: approvals
+paths:
+  /cycles:
+    post:
+      tags: [cycles]
+      summary: Create a new work cycle
+      operationId: createCycle
+      security:
+        - UserIdentityHeader: []
+      parameters:
+        - $ref: '#/components/parameters/XRequestIdHeader'
+        - $ref: '#/components/parameters/XUserRoleHeader'
+        - $ref: '#/components/parameters/XTenantIdHeader'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCycleRequest'
+            examples:
+              basic:
+                value:
+                  project_id: project-1
+                  user_input: Build hydraulic diagnostic plan
+                  metadata:
+                    priority: normal
+      responses:
+        '201':
+          description: Cycle created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeCreateCycleResponse'
+        '200':
+          description: Existing idempotent result returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeCreateCycleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /cycles/{cycle_id}:
+    get:
+      tags: [cycles]
+      summary: Get cycle summary
+      operationId: getCycle
+      security:
+        - UserIdentityHeader: []
+      parameters:
+        - $ref: '#/components/parameters/CycleIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+        - $ref: '#/components/parameters/XUserRoleHeader'
+        - $ref: '#/components/parameters/XTenantIdHeader'
+      responses:
+        '200':
+          description: Cycle summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeCycleSummaryResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /cycles/{cycle_id}/result:
+    get:
+      tags: [cycles]
+      summary: Get finalized result for cycle
+      operationId: getCycleResult
+      security:
+        - UserIdentityHeader: []
+      parameters:
+        - $ref: '#/components/parameters/CycleIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+        - $ref: '#/components/parameters/XUserRoleHeader'
+        - $ref: '#/components/parameters/XTenantIdHeader'
+      responses:
+        '200':
+          description: Finalized result payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeCycleResultResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /cycles/{cycle_id}/retry:
+    post:
+      tags: [cycles]
+      summary: Request retry for cycle
+      operationId: retryCycle
+      security:
+        - UserIdentityHeader: []
+      parameters:
+        - $ref: '#/components/parameters/CycleIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+        - $ref: '#/components/parameters/XUserRoleHeader'
+        - $ref: '#/components/parameters/XTenantIdHeader'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetryCycleRequest'
+            examples:
+              basic:
+                value:
+                  reason: rerun after verification failure
+                  force: false
+      responses:
+        '202':
+          description: Retry accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeActionAcceptedResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /cycles/{cycle_id}/replan:
+    post:
+      tags: [cycles]
+      summary: Request replanning for cycle
+      operationId: replanCycle
+      security:
+        - UserIdentityHeader: []
+      parameters:
+        - $ref: '#/components/parameters/CycleIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+        - $ref: '#/components/parameters/XUserRoleHeader'
+        - $ref: '#/components/parameters/XTenantIdHeader'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplanCycleRequest'
+            examples:
+              basic:
+                value:
+                  reason: adjust plan
+                  override_input:
+                    prompt: prefer conservative execution
+      responses:
+        '202':
+          description: Replan accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeActionAcceptedResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /approvals/{approval_id}/confirm:
+    post:
+      tags: [approvals]
+      summary: Confirm approval decision
+      operationId: confirmApproval
+      security:
+        - UserIdentityHeader: []
+      parameters:
+        - $ref: '#/components/parameters/ApprovalIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+        - $ref: '#/components/parameters/XUserRoleHeader'
+        - $ref: '#/components/parameters/XTenantIdHeader'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalDecisionRequest'
+            examples:
+              approve:
+                value:
+                  decision: approved
+                  comment: policy reviewed
+              reject:
+                value:
+                  decision: rejected
+                  reason_code: unsafe
+      responses:
+        '200':
+          description: Approval decision applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeApprovalDecisionResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    UserIdentityHeader:
+      type: apiKey
+      in: header
+      name: X-User-Id
+      description: Required identity header used by the scaffold auth dependency.
+
+  parameters:
+    CycleIdPath:
+      in: path
+      name: cycle_id
+      required: true
+      schema:
+        type: string
+      description: Cycle identifier.
+    ApprovalIdPath:
+      in: path
+      name: approval_id
+      required: true
+      schema:
+        type: string
+      description: Approval identifier.
+    XRequestIdHeader:
+      in: header
+      name: X-Request-Id
+      required: false
+      schema:
+        type: string
+      description: Optional request identifier. If omitted, the server generates one and returns it in the response envelope body.
+    XUserRoleHeader:
+      in: header
+      name: X-User-Role
+      required: false
+      schema:
+        type: string
+        default: operator
+      description: Optional scaffold role header. Used by approval authorization checks.
+    XTenantIdHeader:
+      in: header
+      name: X-Tenant-Id
+      required: false
+      schema:
+        type: string
+      description: Optional tenant scope header. When present, tenant ownership checks are enforced.
+    IdempotencyKeyHeader:
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+      description: Required idempotency key for mutating endpoints.
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            badRequest:
+              value:
+                request_id: req-123
+                correlation_id: corr-123
+                status: error
+                error:
+                  code: bad_request
+                  message: malformed request
+                  retryable: false
+                  next_action: null
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            forbidden:
+              value:
+                request_id: req-123
+                correlation_id: corr-123
+                status: error
+                error:
+                  code: forbidden
+                  message: forbidden
+                  retryable: false
+                  next_action: null
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            notFound:
+              value:
+                request_id: req-123
+                correlation_id: corr-123
+                status: error
+                error:
+                  code: not_found
+                  message: cycle not found
+                  retryable: false
+                  next_action: null
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            conflict:
+              value:
+                request_id: req-123
+                correlation_id: corr-123
+                status: error
+                error:
+                  code: conflict
+                  message: idempotency key reused with different request payload
+                  retryable: false
+                  next_action: null
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            validationError:
+              value:
+                request_id: req-123
+                correlation_id: corr-123
+                status: error
+                error:
+                  code: validation_error
+                  message: Input should be a valid string
+                  retryable: false
+                  next_action: null
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            internalError:
+              value:
+                request_id: req-123
+                correlation_id: corr-123
+                status: error
+                error:
+                  code: internal_error
+                  message: unexpected server error
+                  retryable: true
+                  next_action: null
+
+  schemas:
+    EnvelopeBase:
+      type: object
+      required: [request_id, correlation_id, status]
+      properties:
+        request_id:
+          type: string
+        correlation_id:
+          type: string
+        status:
+          type: string
+          enum: [ok, accepted, error]
+    ErrorDetail:
+      type: object
+      required: [code, message, retryable]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        retryable:
+          type: boolean
+        next_action:
+          type: string
+          nullable: true
+    ErrorEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/EnvelopeBase'
+        - type: object
+          required: [error]
+          properties:
+            error:
+              $ref: '#/components/schemas/ErrorDetail'
+    ArtifactRef:
+      type: object
+      required: [artifact_id, artifact_type, uri]
+      properties:
+        artifact_id:
+          type: string
+        artifact_type:
+          type: string
+        uri:
+          type: string
+        content_type:
+          type: string
+          nullable: true
+    CreateCycleRequest:
+      type: object
+      required: [project_id, user_input]
+      properties:
+        project_id:
+          type: string
+        tenant_id:
+          type: string
+          nullable: true
+        user_input:
+          type: string
+        input_artifacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactRef'
+        metadata:
+          type: object
+          additionalProperties: true
+    CreateCycleResponse:
+      type: object
+      required: [cycle_id, state, user_status, approval_required, created_at]
+      properties:
+        cycle_id:
+          type: string
+        state:
+          type: string
+        user_status:
+          type: string
+        next_action:
+          type: string
+          nullable: true
+        approval_required:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    EnvelopeCreateCycleResponse:
+      allOf:
+        - $ref: '#/components/schemas/EnvelopeBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/CreateCycleResponse'
+    CycleSummaryResponse:
+      type: object
+      required: [cycle_id, state, user_status, approval_required, retry_allowed, replan_allowed, updated_at]
+      properties:
+        cycle_id:
+          type: string
+        state:
+          type: string
+        user_status:
+          type: string
+        next_action:
+          type: string
+          nullable: true
+        approval_required:
+          type: boolean
+        retry_allowed:
+          type: boolean
+        replan_allowed:
+          type: boolean
+        updated_at:
+          type: string
+          format: date-time
+    EnvelopeCycleSummaryResponse:
+      allOf:
+        - $ref: '#/components/schemas/EnvelopeBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/CycleSummaryResponse'
+    RetryCycleRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+        force:
+          type: boolean
+          default: false
+    ReplanCycleRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+        override_input:
+          type: object
+          additionalProperties:
+            type: string
+          nullable: true
+    ActionAcceptedResponse:
+      type: object
+      required: [cycle_id, action, accepted, job_id, state]
+      properties:
+        cycle_id:
+          type: string
+        action:
+          type: string
+          enum: [retry, replan]
+        accepted:
+          type: boolean
+        job_id:
+          type: string
+        state:
+          type: string
+    EnvelopeActionAcceptedResponse:
+      allOf:
+        - $ref: '#/components/schemas/EnvelopeBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/ActionAcceptedResponse'
+    ApprovalDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approved, rejected]
+        comment:
+          type: string
+          nullable: true
+        reason_code:
+          type: string
+          nullable: true
+    ApprovalDecisionResponse:
+      type: object
+      required: [approval_id, decision, approval_state, cycle_id, resume_enqueued, acted_at]
+      properties:
+        approval_id:
+          type: string
+        decision:
+          type: string
+        approval_state:
+          type: string
+        cycle_id:
+          type: string
+        resume_enqueued:
+          type: boolean
+        acted_at:
+          type: string
+          format: date-time
+    EnvelopeApprovalDecisionResponse:
+      allOf:
+        - $ref: '#/components/schemas/EnvelopeBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/ApprovalDecisionResponse'
+    VerificationSummary:
+      type: object
+      properties:
+        status:
+          type: string
+          nullable: true
+        failed_rules:
+          type: array
+          items:
+            type: string
+    ApprovalSummary:
+      type: object
+      properties:
+        required:
+          type: boolean
+        approval_id:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+    CycleResultResponse:
+      type: object
+      required: [cycle_id, final_state, summary, output_artifacts, generated_at]
+      properties:
+        cycle_id:
+          type: string
+        final_state:
+          type: string
+        summary:
+          type: string
+        output_artifacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactRef'
+        verification:
+          $ref: '#/components/schemas/VerificationSummary'
+        approval:
+          $ref: '#/components/schemas/ApprovalSummary'
+        evidence_summary:
+          type: object
+          additionalProperties: true
+        generated_at:
+          type: string
+          format: date-time
+    EnvelopeCycleResultResponse:
+      allOf:
+        - $ref: '#/components/schemas/EnvelopeBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/CycleResultResponse'

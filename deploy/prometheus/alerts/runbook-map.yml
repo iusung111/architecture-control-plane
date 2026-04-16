@@ -1,0 +1,38 @@
+alerts:
+  ACPApiAvailabilityErrorBudgetFastBurn: api-availability-fast-burn
+  ACPApiAvailabilityErrorBudgetSlowBurn: api-availability-slow-burn
+  ACPApiLatencyErrorBudgetFastBurn: api-latency-fast-burn
+  ACPApiLatencyErrorBudgetSlowBurn: api-latency-slow-burn
+  ACPWorkerDeadLettering: worker-dead-lettering
+  ACPOutboxDeadLettering: outbox-dead-lettering
+  ACPAuthFailuresSpike: auth-failures-spike
+  ACPDbLockConflictsSpike: db-lock-conflicts-spike
+  ACPRateLimitBackendUnhealthy: rate-limit-backend-unhealthy
+  ACPRateLimitFailOpenBypass: rate-limit-fail-open-bypass
+  ACPJobQueueBacklog: job-queue-backlog
+  ACPBackupDrillRunningTooLong: backup-drill-running-too-long
+runbooks:
+  api-availability-fast-burn:
+    title: API availability fast burn
+  api-availability-slow-burn:
+    title: API availability slow burn
+  api-latency-fast-burn:
+    title: API latency fast burn
+  api-latency-slow-burn:
+    title: API latency slow burn
+  worker-dead-lettering:
+    title: Worker dead lettering
+  outbox-dead-lettering:
+    title: Outbox dead lettering
+  auth-failures-spike:
+    title: Authentication failures spike
+  db-lock-conflicts-spike:
+    title: Database lock conflicts spike
+  rate-limit-backend-unhealthy:
+    title: Rate limit backend unhealthy
+  rate-limit-fail-open-bypass:
+    title: Rate limit fail-open bypass
+  job-queue-backlog:
+    title: Job queue backlog
+  backup-drill-running-too-long:
+    title: Backup drill running too long

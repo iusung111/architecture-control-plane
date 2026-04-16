@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: acp-worker-jobs-metrics
+  labels:
+    app.kubernetes.io/component: worker-jobs
+spec:
+  selector:
+    app.kubernetes.io/component: worker-jobs
+  ports:
+    - name: metrics
+      port: 9101
+      targetPort: metrics
